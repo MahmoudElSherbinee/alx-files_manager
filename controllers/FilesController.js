@@ -135,28 +135,48 @@ export default class FilesController {
 
   static async getShow(req, res) {
     const { user } = req;
+
+    // Check if the user is authenticated
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const id = req.params ? req.params.id : NULL_ID;
     const userId = user._id.toString();
-    const file = await (await dbClient.filesCollection())
-      .findOne({
+
+    try {
+      // Retrieve the file document
+      const file = await (await dbClient.filesCollection()).findOne({
         _id: new mongoDBCore.BSON.ObjectId(isValidId(id) ? id : NULL_ID),
         userId: new mongoDBCore.BSON.ObjectId(isValidId(userId) ? userId : NULL_ID),
       });
 
-    if (!file) {
-      res.status(404).json({ error: 'Not found' });
-      return;
+      // Check if the file was found
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Return the file details
+      res.status(200).json({
+        id,
+        userId,
+        name: file.name,
+        type: file.type,
+        isPublic: file.isPublic,
+        parentId: file.parentId === ROOT_FOLDER_ID.toString()
+          ? 0
+          : file.parentId.toString(),
+      });
+
+      // Return null at the end to satisfy the consistent-return rule
+      return null;
+    } catch (error) {
+      // Handle any unexpected errors
+      console.error('Error retrieving file:', error);
+      res.status(500).json({ error: 'Internal Server Error', details: error.message });
+      // Return null here as well
+      return null;
     }
-    res.status(200).json({
-      id,
-      userId,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId === ROOT_FOLDER_ID.toString()
-        ? 0
-        : file.parentId.toString(),
-    });
   }
 
   /**
