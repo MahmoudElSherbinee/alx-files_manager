@@ -1,0 +1,1 @@
+This README file is for the alx-files_manager project.
